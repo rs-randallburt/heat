@@ -14,10 +14,10 @@
 #    under the License.
 
 try:
-    from pyrax.exceptions import NotFound
+    from pyrax.exceptions import ClientException
 except ImportError:
     # fake exception for testing without pyrax
-    class NotFound(Exception):
+    class ClientException(Exception):
         pass
 
 from heat.common import exception
@@ -183,12 +183,11 @@ class CloudDBInstance(rackspace_resource.RackspaceResource):
         logger.debug("CloudDBInstance handle_delete called.")
         if self.resource_id is None:
             return
-
         try:
-            instances = self.cloud_db().delete(self.resource_id)
-        except NotFound:
-            pass
-        self.resource_id = None
+            self.cloud_db().delete(self.resource_id)
+        except ClientException as cexc:
+            if str(cexc.code) != "404":
+                raise cexc
 
     def validate(self):
         '''
