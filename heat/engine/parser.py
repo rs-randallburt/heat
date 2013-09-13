@@ -142,8 +142,13 @@ class Stack(object):
         if stack is None:
             message = 'No stack exists with id "%s"' % str(stack_id)
             raise exception.NotFound(message)
-
-        template = Template.load(context, stack.raw_template_id)
+        if stack.raw_template:
+            import json
+            logger.debug("LOADING TEMPLATE FROM STACK DATA:\n\n%s\n\n" % json.dumps(stack.raw_template.template, indent=4))
+            template = Template(stack.raw_template.template, stack.raw_template_id)
+        else:
+            logger.debug("LOADING TEMPLATE FROM DB")
+            template = Template.load(context, stack.raw_template_id)
         env = environment.Environment(stack.parameters)
         stack = cls(context, stack.name, template, env,
                     stack.id, stack.action, stack.status, stack.status_reason,
