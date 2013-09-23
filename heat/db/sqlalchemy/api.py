@@ -14,6 +14,8 @@
 #    under the License.
 
 '''Implementation of SQLAlchemy backend.'''
+from copy import deepcopy
+
 from datetime import datetime
 from datetime import timedelta
 
@@ -125,9 +127,8 @@ def _decrypt(enc_value):
     if value is not None:
         return unicode(value, 'utf-8')
 
-
 def resource_data_get_by_key(context, resource_id, key):
-    result = (model_query(context, models.ResourceData)
+    result = deepcopy(model_query(context, models.ResourceData)
               .filter_by(resource_id=resource_id)
               .filter_by(key=key)
               .first())

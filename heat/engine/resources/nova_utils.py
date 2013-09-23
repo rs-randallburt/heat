@@ -121,6 +121,8 @@ def get_keypair(nova_client, key_name):
             return keypair
     raise exception.UserKeyPairMissing(key_name=key_name)
 
+def upload_keypair(nova_client, key_name, key):
+    return nova_client.keypairs.create(key_name, key)
 
 def build_userdata(resource, userdata=None):
     '''
