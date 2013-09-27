@@ -50,7 +50,10 @@ except ImportError:
 cloud_opts = [
     cfg.StrOpt('cloud_backend',
                default=None,
-               help="Cloud module to use as a backend. Defaults to OpenStack.")
+               help="Cloud module to use as a backend. Defaults to OpenStack."),
+    cfg.StrOpt('region_name',
+               default=None,
+               help='Region for connecting to services')
 ]
 cfg.CONF.register_opts(cloud_opts)
 
@@ -68,6 +71,7 @@ class OpenStackClients(object):
         self._neutron = None
         self._cinder = None
         self._ceilometer = None
+        self.region_name = cfg.CONF.region_name
 
     @property
     def auth_token(self):
@@ -103,12 +107,14 @@ class OpenStackClients(object):
             'service_type': service_type,
             'username': None,
             'api_key': None,
+            'region_name': self.region_name,
             'extensions': extensions
         }
 
         client = novaclient.Client(1.1, **args)
-
-        management_url = self.url_for(service_type=service_type)
+        management_url = self.url_for(service_type=service_type,
+                                      attr='region',
+                                      filter_value=self.region_name)
         client.client.auth_token = self.auth_token
         client.client.management_url = management_url
 
@@ -133,7 +139,9 @@ class OpenStackClients(object):
             'key': None,
             'authurl': None,
             'preauthtoken': self.auth_token,
-            'preauthurl': self.url_for(service_type='object-store')
+            'preauthurl': self.url_for(service_type='object-store',
+                                       attr='region',
+                                       filter_value=self.region_name)
         }
         self._swift = swiftclient.Connection(**args)
         return self._swift
@@ -153,7 +161,9 @@ class OpenStackClients(object):
             'auth_url': con.auth_url,
             'service_type': 'network',
             'token': self.auth_token,
-            'endpoint_url': self.url_for(service_type='network')
+            'endpoint_url': self.url_for(service_type='network',
+                                         attr='region',
+                                         filter_value=self.region_name)
         }
 
         self._neutron = neutronclient.Client(**args)
@@ -180,7 +190,9 @@ class OpenStackClients(object):
         }
 
         self._cinder = cinderclient.Client('1', **args)
-        management_url = self.url_for(service_type='volume')
+        management_url = self.url_for(service_type='volume',
+                                      attr='region',
+                                      filter_value=self.region_name)
         self._cinder.client.auth_token = self.auth_token
         self._cinder.client.management_url = management_url
 
@@ -201,7 +213,9 @@ class OpenStackClients(object):
             'service_type': 'metering',
             'project_id': con.tenant,
             'token': lambda: self.auth_token,
-            'endpoint': self.url_for(service_type='metering'),
+            'endpoint': self.url_for(service_type='metering',
+                                     attr='region',
+                                     filter_value=self.region_name),
         }
 
         client = ceilometerclient.Client(**args)
