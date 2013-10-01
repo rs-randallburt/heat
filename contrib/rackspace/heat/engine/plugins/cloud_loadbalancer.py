@@ -11,6 +11,8 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
+from heat.common.exception import StackValidationFailed
+import copy
 try:
     from pyrax.exceptions import NotFound
 except ImportError:
@@ -44,8 +46,7 @@ class CloudLoadBalancer(rackspace_resource.RackspaceResource):
                         "WEIGHTED_LEAST_CONNECTIONS", "WEIGHTED_ROUND_ROBIN"]
 
     nodes_schema = {
-        'address': {'Type': 'String', 'Required': False},
-        'ref': {'Type': 'String', 'Required': False},
+        'addresses': {'Type': 'List', 'Required': False},
         'port': {'Type': 'Number', 'Required': True},
         'condition': {'Type': 'String', 'Required': True,
                       'AllowedValues': ['ENABLED', 'DISABLED'],
@@ -263,19 +264,20 @@ class CloudLoadBalancer(rackspace_resource.RackspaceResource):
     def handle_create(self):
         node_list = []
         for node in self.properties['nodes']:
-            # resolve references to stack resource IP's
-            if node.get('ref'):
-                node['address'] = (self.stack
-                                   .resource_by_refid(node['ref'])
-                                   .FnGetAtt('PublicIp'))
-            del node['ref']
-            node_list.append(node)
+            if 'addresses' in node.keys():
+                addresses = node.pop('addresses') or []
+                for addr in addresses:
+                    norm_node = copy.deepcopy(node)
+                    norm_node['address'] = addr
+                    node_list.append(norm_node)
+            else:
+                node_list.append(node)
 
         nodes = [self.clb.Node(**node) for node in node_list]
         virtual_ips = self._setup_properties(self.properties.get('virtualIps'),
                                              self.clb.VirtualIP)
 
-        (session_persistence, connection_logging, metadata) = \
+        session_persistence, connection_logging, metadata = \
             self._alter_properties_for_api()
 
         lb_body = {
@@ -311,23 +313,28 @@ class CloudLoadBalancer(rackspace_resource.RackspaceResource):
         Add and remove nodes specified in the prop_diff.
         """
         loadbalancer = self.clb.get(self.resource_id)
+
         if 'nodes' in prop_diff:
+            new_nodes = []
             current_nodes = loadbalancer.nodes
             #Loadbalancers can be uniquely identified by address and port.
             #Old is a dict of all nodes the loadbalancer currently knows about.
             for node in prop_diff['nodes']:
-                # resolve references to stack resource IP's
-                if node.get('ref'):
-                    node['address'] = (self.stack
-                                       .resource_by_refid(node['ref'])
-                                       .FnGetAtt('PublicIp'))
-                    del node['ref']
+                if node.get('addresses'):
+                    addresses = node.pop('addresses')
+                    for addr in addresses:
+                        new_node = copy.deepcopy(node)
+                        new_node['address'] = addr
+                        new_nodes.append(new_node)
+                else:
+                    new_nodes.append(node)
+
             old = dict(("{0.address}{0.port}".format(node), node)
                        for node in current_nodes)
             #New is a dict of the nodes the loadbalancer will know about after
             #this update.
             new = dict(("%s%s" % (node['address'], node['port']), node)
-                       for node in prop_diff['nodes'])
+                       for node in new_nodes)
 
             old_set = set(old.keys())
             new_set = set(new.keys())
@@ -409,27 +416,27 @@ class CloudLoadBalancer(rackspace_resource.RackspaceResource):
                 schema = CloudLoadBalancer.health_monitor_connect_schema
             else:
                 schema = CloudLoadBalancer.health_monitor_http_schema
-            try:
-                Properties(schema,
-                           health_monitor,
-                           self.stack.resolve_runtime_data,
-                           self.name).validate()
-            except exception.StackValidationFailed as svf:
-                return {'Error': str(svf)}
+
+            Properties(schema,
+                       health_monitor,
+                       self.stack.resolve_runtime_data,
+                       self.name).validate()
 
         if self.properties.get('sslTermination'):
             ssl_termination = self._remove_none(
                 self.properties['sslTermination'])
 
             if ssl_termination['enabled']:
-                try:
-                    Properties(CloudLoadBalancer.
-                               ssl_termination_enabled_schema,
-                               ssl_termination,
-                               self.stack.resolve_runtime_data,
-                               self.name).validate()
-                except exception.StackValidationFailed as svf:
-                    return {'Error': str(svf)}
+                Properties(CloudLoadBalancer.
+                           ssl_termination_enabled_schema,
+                           ssl_termination,
+                           self.stack.resolve_runtime_data,
+                           self.name).validate()
+        if self.properties.get('nodes'):
+            for node in self.properties.get('nodes'):
+                if node.get('address') and node.get('addresses'):
+                    raise StackValidationFailed("Cannot specify both address"
+                                                " and addresses for a node")
 
     def FnGetRefId(self):
         return unicode(self.name)

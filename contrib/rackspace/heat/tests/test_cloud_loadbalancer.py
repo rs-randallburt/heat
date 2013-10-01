@@ -24,6 +24,7 @@ from heat.tests.common import HeatTestCase
 from heat.tests import utils
 
 from ..engine.plugins import cloud_loadbalancer as lb  # noqa
+from heat.common.exception import StackValidationFailed
 
 # The following fakes are for pyrax
 
@@ -165,7 +166,7 @@ class LoadBalancerTest(HeatTestCase):
                     "Type": "Rackspace::Cloud::LoadBalancer",
                     "Properties": {
                         "name": "test-clb",
-                        "nodes": [{"address": "166.78.103.141", "port": 80,
+                        "nodes": [{"addresses": ["166.78.103.141"], "port": 80,
                                    "condition": "ENABLED"}],
                         "protocol": "HTTP",
                         "port": 80,
@@ -348,8 +349,8 @@ class LoadBalancerTest(HeatTestCase):
         rsrc, fake_loadbalancer = self._mock_loadbalancer(template,
                                                           self.lb_name,
                                                           expected)
-        self.assertEqual(rsrc.validate(),
-                         {'Error': 'Unknown Property bodyRegex'})
+        exc = self.assertRaises(StackValidationFailed, rsrc.validate)
+        self.assertTrue('Unknown Property bodyRegex' in str(exc))
 
         #test http fields
         health_monitor['type'] = 'HTTP'
@@ -384,10 +385,8 @@ class LoadBalancerTest(HeatTestCase):
         rsrc, fake_loadbalancer = self._mock_loadbalancer(template,
                                                           self.lb_name,
                                                           expected)
-        self.assertEqual(rsrc.validate(),
-                         {'Error':
-                          'Property error : %s: Property securePort not '
-                          'assigned' % rsrc.name})
+        ex = self.assertRaises(StackValidationFailed, rsrc.validate)
+        self.assertTrue("securePort" in str(ex))
 
         ssl_termination['securePort'] = 443
         template = self._set_template(template,
@@ -468,40 +467,6 @@ class LoadBalancerTest(HeatTestCase):
                                                           self.expected_body)
         self.m.ReplayAll()
         scheduler.TaskRunner(rsrc.create)()
-        self.m.VerifyAll()
-
-    def test_update_add_node_by_ref(self):
-        added_node = {'nodes': [
-            {"address": "166.78.103.141", "port": 80, "condition": "ENABLED"},
-            {"ref": "TEST_NODE_REF", "port": 80, "condition": "ENABLED"}]}
-        expected_ip = '172.168.1.4'
-        rsrc, fake_loadbalancer = self._mock_loadbalancer(self.lb_template,
-                                                          self.lb_name,
-                                                          self.expected_body)
-        fake_loadbalancer.nodes = self.expected_body['nodes']
-        self.m.ReplayAll()
-        scheduler.TaskRunner(rsrc.create)()
-        self.m.VerifyAll()
-
-        self.m.StubOutWithMock(rsrc.clb, 'get')
-        rsrc.clb.get(rsrc.resource_id).AndReturn(fake_loadbalancer)
-
-        self.m.StubOutWithMock(rsrc.stack, 'resource_by_refid')
-
-        class FakeFn(object):
-            def FnGetAtt(self, attr):
-                return expected_ip
-
-        rsrc.stack.resource_by_refid('TEST_NODE_REF').AndReturn(FakeFn())
-
-        self.m.StubOutWithMock(fake_loadbalancer, 'add_nodes')
-        fake_loadbalancer.add_nodes([
-            fake_loadbalancer.Node(address=expected_ip,
-                                   port=80,
-                                   condition='ENABLED')])
-
-        self.m.ReplayAll()
-        rsrc.handle_update({}, {}, added_node)
         self.m.VerifyAll()
 
     def test_update_add_node_by_address(self):
