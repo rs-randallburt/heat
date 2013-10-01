@@ -19,6 +19,8 @@ try:
 except ImportError:
     PYRAX_INSTALLED = False
 
+from oslo.config import cfg
+
 from heat.engine import resource
 from heat.openstack.common import log as logging
 
@@ -98,6 +100,8 @@ class RackspaceResource(resource.Resource):
             pyrax.set_setting("identity_type", "keystone")
             pyrax.set_setting("auth_endpoint", self.context.auth_url)
             pyrax.set_setting("tenant_id", self.context.tenant)
+            if cfg.CONF.region_name:
+                pyrax.set_setting("region", cfg.CONF.region_name)
             logger.info("Authenticating with username:%s" %
                         self.context.username)
             pyrax.auth_with_token(self.context.auth_token,
