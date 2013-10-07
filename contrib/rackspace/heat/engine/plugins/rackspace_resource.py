@@ -47,7 +47,7 @@ class RackspaceResource(resource.Resource):
         '''Rackspace cloud database client.'''
         if not self._cloud_db:
             self.__authenticate()
-            self._cloud_db = self.pyrax.cloud_databases
+            self._cloud_db = self.pyrax.cloud_databases()
 
         return self._cloud_db
 
@@ -55,7 +55,7 @@ class RackspaceResource(resource.Resource):
         '''Rackspace cloud loadbalancer client.'''
         if not self._cloud_lb:
             self.__authenticate()
-            self._cloud_lb = self.pyrax.cloud_loadbalancers
+            self._cloud_lb = self.pyrax.cloud_loadbalancers()
 
         return self._cloud_lb
 
@@ -63,7 +63,7 @@ class RackspaceResource(resource.Resource):
         '''Rackspace cloud dns client.'''
         if not self._cloud_dns:
             self.__authenticate()
-            self._cloud_dns = self.pyrax.cloud_dns
+            self._cloud_dns = self.pyrax.cloud_dns()
 
         return self._cloud_dns
 
@@ -71,7 +71,7 @@ class RackspaceResource(resource.Resource):
         '''Rackspace cloudservers client.'''
         if not self._cloud_server:
             self.__authenticate()
-            self._cloud_server = self.pyrax.cloudservers
+            self._cloud_server = self.pyrax.cloudservers()
 
         return self._cloud_server
 
@@ -79,7 +79,7 @@ class RackspaceResource(resource.Resource):
         '''Rackspace cinder client.'''
         if not self._cloud_blockstore:
             self.__authenticate()
-            self._cloud_blockstore = self.pyrax.cloud_blockstorage
+            self._cloud_blockstore = self.pyrax.cloud_blockstorage()
 
         return self._cloud_blockstore
 
@@ -87,7 +87,7 @@ class RackspaceResource(resource.Resource):
         '''Rackspace neutron client.'''
         if not self._cloud_nw:
             self.__authenticate()
-            self._cloud_nw = self.pyrax.cloud_networks
+            self._cloud_nw = self.pyrax.cloud_networks()
 
         return self._cloud_nw
 
