@@ -19,6 +19,9 @@ try:
 except ImportError:
     PYRAX_INSTALLED = False
 
+from oslo.config import cfg
+
+from heat.common import exception
 from heat.engine import resource
 from heat.openstack.common import log as logging
 
@@ -33,76 +36,50 @@ class RackspaceResource(resource.Resource):
 
     def __init__(self, name, json_snippet, stack):
         super(RackspaceResource, self).__init__(name, json_snippet, stack)
-        if PYRAX_INSTALLED:
-            self.pyrax = pyrax
-        self._cloud_db = None
-        self._cloud_dns = None
-        self._cloud_lb = None
-        self._cloud_server = None
-        self._cloud_nw = None
-        self._cloud_blockstore = None
-        self._authenticated = False
+        self.pyrax = {}
+
+    def _get_client(self, name):
+        if not self.pyrax:
+            self.__authenticate()
+        return self.pyrax.get(name)
 
     def cloud_db(self):
         '''Rackspace cloud database client.'''
-        if not self._cloud_db:
-            self.__authenticate()
-            self._cloud_db = self.pyrax.cloud_databases
-
-        return self._cloud_db
+        return self._get_client("database")
 
     def cloud_lb(self):
         '''Rackspace cloud loadbalancer client.'''
-        if not self._cloud_lb:
-            self.__authenticate()
-            self._cloud_lb = self.pyrax.cloud_loadbalancers
-
-        return self._cloud_lb
+        return self._get_client("load_balancer")
 
     def cloud_dns(self):
         '''Rackspace cloud dns client.'''
-        if not self._cloud_dns:
-            self.__authenticate()
-            self._cloud_dns = self.pyrax.cloud_dns
-
-        return self._cloud_dns
+        return self._get_client("dns")
 
     def nova(self):
         '''Rackspace cloudservers client.'''
-        if not self._cloud_server:
-            self.__authenticate()
-            self._cloud_server = self.pyrax.cloudservers
-
-        return self._cloud_server
+        return self._get_client("compute")
 
     def cinder(self):
         '''Rackspace cinder client.'''
-        if not self._cloud_blockstore:
-            self.__authenticate()
-            self._cloud_blockstore = self.pyrax.cloud_blockstorage
-
-        return self._cloud_blockstore
+        return self._get_client("volume")
 
     def neutron(self):
         '''Rackspace neutron client.'''
-        if not self._cloud_nw:
-            self.__authenticate()
-            self._cloud_nw = self.pyrax.cloud_networks
-
-        return self._cloud_nw
+        return self._get_client("network")
 
     def __authenticate(self):
         # current implemenation shown below authenticates using
         # username and password. Need make it work with auth-token
-        if not self._authenticated:
-            pyrax.set_setting("identity_type", "rackspace")
-            pyrax.set_setting("auth_endpoint", self.context.auth_url)
-            pyrax.set_setting("tenant_id", self.context.tenant)
-            logger.info("Authenticating with username:%s" %
-                        self.context.username)
-            pyrax.auth_with_token(self.context.auth_token,
-                                  tenant_id=self.context.tenant_id,
-                                  tenant_name=self.context.tenant)
-            logger.info("User %s authenticated successfully."
-                        % self.context.username)
-            self._authenticated = True
+        pyrax.set_setting("identity_type", "rackspace")
+        pyrax.set_setting("auth_endpoint", self.context.auth_url)
+        logger.info("Authenticating with username:%s" %
+                    self.context.username)
+        self.pyrax = pyrax.auth_with_token(self.context.auth_token,
+                                           tenant_id=self.context.tenant_id,
+                                           tenant_name=self.context.tenant,
+                                           region=(cfg.CONF.region_name or
+                                                   None))
+        if not self.pyrax:
+            raise exception.AuthorizationFailure("No services available.")
+        logger.info("User %s authenticated successfully."
+                    % self.context.username)
