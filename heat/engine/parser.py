@@ -183,8 +183,12 @@ class Stack(collections.Mapping):
         if stack is None:
             message = 'No stack exists with id "%s"' % str(stack_id)
             raise exception.NotFound(message)
-
-        template = Template.load(context, stack.raw_template_id)
+        if stack.raw_template and stack.raw_template.template:
+            # no need to pull the raw template again
+            template = Template(stack.raw_template.template,
+                                stack.raw_template_id)
+        else:
+            template = Template.load(context, stack.raw_template_id)
         env = environment.Environment(stack.parameters)
         stack = cls(context, stack.name, template, env,
                     stack.id, stack.action, stack.status, stack.status_reason,
