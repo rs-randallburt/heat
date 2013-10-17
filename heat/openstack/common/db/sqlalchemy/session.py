@@ -609,7 +609,7 @@ def _ping_listener(dbapi_conn, connection_rec, connection_proxy):
     """
     try:
         dbapi_conn.cursor().execute('select 1')
-    except dbapi_conn.OperationalError as ex:
+    except dbapi_conn.DatabaseError as ex:
         if ex.args[0] in (2006, 2013, 2014, 2045, 2055):
             LOG.warn(_('Got mysql server has gone away: %s'), ex)
             raise sqla_exc.DisconnectionError("Database server went away")
