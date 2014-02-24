@@ -107,13 +107,25 @@ class Clients(clients.OpenStackClients):
             self._cinder.client.management_url = management_url
         return self._cinder
 
+    def swift(self):
+        """
+        Fun fact: you actually have a special tenant just for Rackspace
+        Cloud Files, so you can't just set the region here and defer to the
+        super implementation because passing the user's tenant to auth means
+        that Rackspace's identity won't put the object-store URLs in your
+        service catalog. We have to then rely on pyrax to do the
+        authentication and then return its embedded instance of
+        python-swiftclient.
+        """
+        return self._get_client("object_storage").connection
+
     def __authenticate(self):
         pyrax.set_setting("identity_type", "keystone")
         pyrax.set_setting("auth_endpoint", self.context.auth_url)
         logger.info(_("Authenticating username:%s") %
                     self.context.username)
         self.pyrax = pyrax.auth_with_token(self.context.auth_token,
-                                           tenant_id=self.context.tenant_id,
+                                           #tenant_id=self.context.tenant_id,
                                            tenant_name=self.context.tenant,
                                            region=(cfg.CONF.region_name
                                                    or None))
