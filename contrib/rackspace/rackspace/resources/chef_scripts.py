@@ -126,14 +126,11 @@ class ChefScripts(RemoteCommands):
         os.mkdir(node_path)
         os.mkdir(cookbook_path)
 
-        #TODO(andrew-plunk) redundant
         with open(os.path.join(node_path, installer_type), 'w') as i_file:
             i_file.write(installer_file)
 
-        cmd_path = "/usr/local/bin"
         installer = self._installer(installer_type, install_prefix) 
-        command = "%s/%s install --path %s" % (cmd_path, installer,
-                                               cookbook_path)
+        command = "%s install --path %s" % (installer, cookbook_path)
         self.execute_command(node_path, command)
         return cookbook_path
 
