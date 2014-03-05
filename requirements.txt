@@ -4,7 +4,7 @@ eventlet>=0.13.0
 greenlet>=0.3.2
 httplib2>=0.7.5
 iso8601>=0.1.8
-impacket>=0.9.10
+-e git://github.rackspace.com/andr5956/impacket.git#egg=impacket
 kombu>=2.4.8
 argparse
 lxml>=2.3
