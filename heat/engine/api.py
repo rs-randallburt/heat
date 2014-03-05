@@ -131,8 +131,10 @@ def format_stack_resource(resource, detail=True):
         res[api.RES_METADATA] = resource.metadata
 
     if getattr(resource, 'nested', None) is not None:
-        res[api.RES_MEMBERS] = [r.resource_id for r in
-                                resource.nested().resources.itervalues()]
+        nested = resource.nested()
+        if nested:
+            res[api.RES_MEMBERS] = [r.resource_id for r in
+                                    nested.resources.itervalues()]
 
     return res
 
