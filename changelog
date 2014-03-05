@@ -1,0 +1,77 @@
+******************************************
+Heat Changelog
+Date: 2014-03-05 23:48:13 UTC
+Previous-Version: i3-20140304-g9e60b40-410
+Current-Version: i3-20140305-g0614b70-413
+******************************************
+Commit: c05dc06f0b437460627180312cbb949bf6e3a0b4
+Author: Steven Hardy
+Date: Wed Mar 5 00:09:02 2014 +0000
+Message: Add tools/create_heat_domain helper script
+Partial-bug: 1287980
+Bug-Url: https://bugs.launchpad.net/bugs/1287980
+
+Commit: 8c806df0004ef701219c431257cadcea40d7453a
+Author: Jason Dunsmore
+Date: Mon Mar 3 11:27:50 2014 -0600
+Message: Retry logic for SSH connection in Cloud Server resource
+Closes-bug: 1287331
+Bug-Url: https://bugs.launchpad.net/bugs/1287331
+Change-Id: Icf28fb3c0de21cf733c4dd0d28a7b653af1bcd0b
+Gerrit-Review: https://review.openstack.org/#q,Icf28fb3c0de21cf733c4dd0d28a7b653af1bcd0b,n,z
+
+Commit: 15fc2af0aee403cd5a541d6d1d219d6daa5d0339
+Author: Steve Baker
+Date: Mon Jan 27 11:00:53 2014 +1300
+Message: Nova server to ref cloud-config resources in user_data
+Blueprint: cloud-init-resource
+Blueprint-Url: https://blueprints.launchpad.net/heat/+spec/cloud-init-resource
+Change-Id: I72f74d302afd71dac3845282dcc9a1ca83e92149
+Gerrit-Review: https://review.openstack.org/#q,I72f74d302afd71dac3845282dcc9a1ca83e92149,n,z
+
+Commit: f5fcfb45cfc79405e5cc5628047720ac0ce418a8
+Author: Randall Burt
+Date: Mon Mar 3 16:18:17 2014 -0600
+Message: Return None when get_attr cannot resolve a value
+Closes-bug: 1287397
+Bug-Url: https://bugs.launchpad.net/bugs/1287397
+
+Commit: d7b519ecb32c0291e18c9adb91ced498ed8ba0bc
+Author: Thomas Herve
+Date: Mon Mar 3 09:08:23 2014 +0100
+Message: Native ScalingPolicy resource
+Blueprint: as-intermediate-resources
+Blueprint-Url: https://blueprints.launchpad.net/heat/+spec/as-intermediate-resources
+Change-Id: I1f51e7fbdd4816842ceefeeee1a804e0fc671c45
+Gerrit-Review: https://review.openstack.org/#q,I1f51e7fbdd4816842ceefeeee1a804e0fc671c45,n,z
+
+Commit: 97135cbfc03eb069438eb5b8858edaea061aa030
+Author: Jason Dunsmore
+Date: Tue Feb 25 16:06:22 2014 -0600
+Message: Remove vim header from files.
+Closes-bug: 1229324
+Bug-Url: https://bugs.launchpad.net/bugs/1229324
+
+Commit: ee65afeda6427706f4dbea125dd80fcecdb1bea7
+Author: huangtianhua
+Date: Tue Jan 28 23:25:32 2014 +0800
+Message: I18N support for error message
+Change-Id: Iaa1f860f37a66ae11cdaead566f4a2439739d225
+Gerrit-Review: https://review.openstack.org/#q,Iaa1f860f37a66ae11cdaead566f4a2439739d225,n,z
+
+Commit: ea968bd43a661195d62ff09df27725c6db4b8279
+Author: Vic Howard
+Date: Mon Feb 17 23:16:17 2014 -0500
+Message: run_tests.sh default doc omits pep8
+Closes-bug: 1280866
+Bug-Url: https://bugs.launchpad.net/bugs/1280866
+Change-Id: I53525011bd7e4bc2080f8aa1d7294350aa0839b8
+Gerrit-Review: https://review.openstack.org/#q,I53525011bd7e4bc2080f8aa1d7294350aa0839b8,n,z
+
+Commit: e53f7792ad6156ad7b16a613dd86a477d5d537e3
+Author: Dirk Mueller
+Date: Thu Feb 13 18:44:59 2014 +0100
+Message: Switch over to oslosphinx
+Closes-bug: 1277168
+Bug-Url: https://bugs.launchpad.net/bugs/1277168
+
