@@ -20,6 +20,8 @@ except ImportError:
 
     PYRAX_INSTALLED = False
 
+import copy
+
 from heat.openstack.common import log as logging
 from heat.openstack.common.gettextutils import _
 from heat.engine import scheduler
@@ -51,10 +53,10 @@ class CloudLoadBalancer(resource.Resource):
     )
 
     _NODE_KEYS = (
-        NODE_ADDRESS, NODE_REF, NODE_PORT, NODE_CONDITION, NODE_TYPE,
+        NODE_ADDRESSES, NODE_PORT, NODE_CONDITION, NODE_TYPE,
         NODE_WEIGHT,
     ) = (
-        'address', 'ref', 'port', 'condition', 'type',
+        'addresses', 'port', 'condition', 'type',
         'weight',
     )
 
@@ -160,15 +162,18 @@ class CloudLoadBalancer(resource.Resource):
             schema=properties.Schema(
                 properties.Schema.MAP,
                 schema={
-                    NODE_ADDRESS: properties.Schema(
-                        properties.Schema.STRING
-                    ),
-                    NODE_REF: properties.Schema(
-                        properties.Schema.STRING
+                    NODE_ADDRESSES: properties.Schema(
+                        properties.Schema.LIST,
+                        default=['192.0.2.1'],
+                        required=True,
+                        constraints=[
+                            constraints.Length(min=1)
+                        ]
                     ),
                     NODE_PORT: properties.Schema(
                         properties.Schema.NUMBER,
-                        required=True
+                        required=True,
+                        default=80
                     ),
                     NODE_CONDITION: properties.Schema(
                         properties.Schema.STRING,
@@ -433,16 +438,24 @@ class CloudLoadBalancer(resource.Resource):
                 yield
             loadbalancer.content_caching = enabled
 
-    def handle_create(self):
-        node_list = []
-        for node in self.properties[self.NODES]:
-            # resolve references to stack resource IP's
-            if node.get(self.NODE_REF):
-                resource = self.stack.resource_by_refid(node[self.NODE_REF])
-                node[self.NODE_ADDRESS] = resource.FnGetAtt('PublicIp')
-            del node[self.NODE_REF]
-            node_list.append(node)
+    def _process_node(self, node):
+        if not node.get(self.NODE_ADDRESSES):
+            yield node
+        else:
+            for addr in node.get(self.NODE_ADDRESSES, []):
+                norm_node = copy.deepcopy(node)
+                norm_node['address'] = addr
+                del norm_node[self.NODE_ADDRESSES]
+                yield norm_node
 
+    def _process_nodes(self, node_list):
+        ret = []
+        for node in node_list:
+            ret.extend(self._process_node(node))
+        return ret
+
+    def handle_create(self):
+        node_list = self._process_nodes(self.properties.get(self.NODES, []))
         nodes = [self.clb.Node(**node) for node in node_list]
         vips = self.properties.get(self.VIRTUAL_IPS)
         virtual_ips = self._setup_properties(vips, self.clb.VirtualIP)
@@ -487,21 +500,16 @@ class CloudLoadBalancer(resource.Resource):
         loadbalancer = self.clb.get(self.resource_id)
         if self.NODES in prop_diff:
             current_nodes = loadbalancer.nodes
+            diff_nodes = self._process_nodes(prop_diff[self.NODES])
             #Loadbalancers can be uniquely identified by address and port.
             #Old is a dict of all nodes the loadbalancer currently knows about.
-            for node in prop_diff[self.NODES]:
-                # resolve references to stack resource IP's
-                if node.get(self.NODE_REF):
-                    res = self.stack.resource_by_refid(node[self.NODE_REF])
-                    node[self.NODE_ADDRESS] = res.FnGetAtt('PublicIp')
-                    del node[self.NODE_REF]
             old = dict(("{0.address}{0.port}".format(node), node)
                        for node in current_nodes)
             #New is a dict of the nodes the loadbalancer will know about after
             #this update.
-            new = dict(("%s%s" % (node[self.NODE_ADDRESS],
+            new = dict(("%s%s" % (node["address"],
                                   node[self.NODE_PORT]), node)
-                       for node in prop_diff[self.NODES])
+                       for node in diff_nodes)
 
             old_set = set(old.keys())
             new_set = set(new.keys())
