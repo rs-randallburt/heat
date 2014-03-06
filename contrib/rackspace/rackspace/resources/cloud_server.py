@@ -58,7 +58,7 @@ fi
 yum install -y python-boto python-pip gcc python-devel python-argparse
 pip-python install heat-cfntools
 if [[ -e /etc/cloud/cloud.cfg.d/10_rackspace.cfg ]]; then
-  sed -i 's/ConfigDrive, None/NoCloud/' /etc/cloud/cloud.cfg.d/10_rackspace.cfg
+  sed -i 's/ConfigDrive, None/NoCloud/' /etc/cloud/cloud.cfg.d/*
 fi
 """,
         'rhel': """
