@@ -320,12 +320,14 @@ class Resource(object):
     def _add_dependencies(self, deps, path, fragment):
         if isinstance(fragment, dict):
             for key, value in fragment.items():
-                if key in ('DependsOn', 'Ref', 'Fn::GetAtt', 'get_attr',
-                           'get_resource'):
+                if key in ('DependsOn', 'depends_on',
+                           'Ref', 'get_resource',
+                           'Fn::GetAtt', 'get_attr'):
                     if key in ('Fn::GetAtt', 'get_attr'):
                         res_name = value[0]
                         res_list = [res_name]
-                    elif key == 'DependsOn' and isinstance(value, list):
+                    elif key in ('DependsOn',
+                                 'depends_on') and isinstance(value, list):
                         res_list = value
                     else:
                         res_list = [value]
