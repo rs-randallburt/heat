@@ -1205,12 +1205,47 @@ class ResourceDependenciesTest(HeatTestCase):
         self.assertIn(res, graph)
         self.assertIn(stack['foo'], graph[res])
 
+    def test_hot_dependson(self):
+        tmpl = template.Template({
+            'heat_template_version': '2013-05-23',
+            'resources': {
+                'foo': {'type': 'GenericResourceType'},
+                'bar': {
+                    'Type': 'GenericResourceType',
+                    'depends_on': 'foo',
+                }
+            }
+        })
+        stack = parser.Stack(utils.dummy_context(), 'test', tmpl)
+
+        res = stack['bar']
+        res.add_dependencies(self.deps)
+        graph = self.deps.graph()
+
+        self.assertIn(res, graph)
+        self.assertIn(stack['foo'], graph[res])
+
     def test_dependson_fail(self):
         tmpl = template.Template({
             'Resources': {
                 'foo': {
                     'Type': 'GenericResourceType',
                     'DependsOn': 'wibble',
+                }
+            }
+        })
+        stack = parser.Stack(utils.dummy_context(), 'test', tmpl)
+        ex = self.assertRaises(exception.InvalidTemplateReference,
+                               getattr, stack, 'dependencies')
+        self.assertIn('"wibble" (in foo)', str(ex))
+
+    def test_hot_dependson_fail(self):
+        tmpl = template.Template({
+            'heat_template_version': '2013-05-23',
+            'resources': {
+                'foo': {
+                    'type': 'GenericResourceType',
+                    'depends_on': 'wibble',
                 }
             }
         })
