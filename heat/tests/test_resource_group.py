@@ -64,6 +64,24 @@ template2 = {
     }
 }
 
+template_repl = {
+    "heat_template_version": "2013-05-23",
+    "resources": {
+        "group1": {
+            "type": "OS::Heat::ResourceGroup",
+            "properties": {
+                "count": 2,
+                "resource_def": {
+                    "type": "dummy.resource",
+                    "properties": {
+                        "Foo": "Bar_%index%"
+                    }
+                }
+            }
+        }
+    }
+}
+
 
 class ResourceWithPropsAndId(generic_resource.ResourceWithProps):
 
@@ -132,6 +150,70 @@ class ResourceGroupTest(common.HeatTestCase):
         self.assertEqual(expect, resg._assemble_nested(1))
         expect['resources']["0"]['properties'] = {"Foo": None}
         self.assertEqual(expect, resg._assemble_nested(1, include_all=True))
+
+    def test_index_var(self):
+        stack = utils.parse_stack(template_repl)
+        snip = stack.t['Resources']['group1']
+        resg = resource_group.ResourceGroup('test', snip, stack)
+        expect = {
+            "heat_template_version": "2013-05-23",
+            "resources": {
+                "0": {
+                    "type": "dummy.resource",
+                    "properties": {
+                        "Foo": "Bar_0"
+                    }
+                },
+                "1": {
+                    "type": "dummy.resource",
+                    "properties": {
+                        "Foo": "Bar_1"
+                    }
+                },
+                "2": {
+                    "type": "dummy.resource",
+                    "properties": {
+                        "Foo": "Bar_2"
+                    }
+                }
+            }
+        }
+        self.assertEqual(expect, resg._assemble_nested(3))
+
+    def test_custom_index_var(self):
+        templ = copy.deepcopy(template_repl)
+        templ['resources']['group1']['properties']['index_var'] = "__foo__"
+        stack = utils.parse_stack(templ)
+        snip = stack.t['Resources']['group1']
+        resg = resource_group.ResourceGroup('test', snip, stack)
+        expect = {
+            "heat_template_version": "2013-05-23",
+            "resources": {
+                "0": {
+                    "type": "dummy.resource",
+                    "properties": {
+                        "Foo": "Bar_%index%"
+                    }
+                }
+            }
+        }
+        self.assertEqual(expect, resg._assemble_nested(1))
+
+        res_def = snip['Properties']['resource_def']
+        res_def['properties']['Foo'] = "Bar___foo__"
+        resg = resource_group.ResourceGroup('test', snip, stack)
+        expect = {
+            "heat_template_version": "2013-05-23",
+            "resources": {
+                "0": {
+                    "type": "dummy.resource",
+                    "properties": {
+                        "Foo": "Bar_0"
+                    }
+                }
+            }
+        }
+        self.assertEqual(expect, resg._assemble_nested(1))
 
     def test_assemble_no_properties(self):
         templ = copy.deepcopy(template)

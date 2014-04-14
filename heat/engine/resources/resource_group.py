@@ -11,6 +11,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import collections
 import copy
 
 from heat.common import exception
@@ -19,7 +20,6 @@ from heat.engine import parser
 from heat.engine import properties
 from heat.engine import stack_resource
 from heat.openstack.common.gettextutils import _
-
 
 template_template = {
     "heat_template_version": "2013-05-23",
@@ -43,9 +43,9 @@ class ResourceGroup(stack_resource.StackResource):
     """
 
     PROPERTIES = (
-        COUNT, RESOURCE_DEF,
+        COUNT, INDEX_VAR, RESOURCE_DEF,
     ) = (
-        'count', 'resource_def',
+        'count', 'index_var', 'resource_def',
     )
 
     _RESOURCE_DEF_KEYS = (
@@ -63,6 +63,18 @@ class ResourceGroup(stack_resource.StackResource):
                 constraints.Range(min=1),
             ],
             update_allowed=True
+        ),
+        INDEX_VAR: properties.Schema(
+            properties.Schema.STRING,
+            _('A variable that this resource will use to replace with the '
+              'current index of a given resource in the group. Can be used, '
+              'for example, to customize the name property of grouped '
+              'servers in order to differentiate them when listed with '
+              'nova client.'),
+            default="%index%",
+            constraints=[
+                constraints.Length(min=3)
+            ]
         ),
         RESOURCE_DEF: properties.Schema(
             properties.Schema.MAP,
@@ -150,7 +162,19 @@ class ResourceGroup(stack_resource.StackResource):
             resource_def_props = resource_def[self.RESOURCE_DEF_PROPERTIES]
             clean = dict((k, v) for k, v in resource_def_props.items() if v)
             resource_def[self.RESOURCE_DEF_PROPERTIES] = clean
-        resources = dict((str(k), resource_def)
+
+        def handle_repl_val(repl_var, idx, val):
+            recurse = lambda x: handle_repl_val(repl_var, idx, x)
+            if isinstance(val, basestring):
+                return val.replace(repl_var, str(idx))
+            elif isinstance(val, collections.Mapping):
+                return dict(zip(val, map(recurse, val.values())))
+            elif isinstance(val, collections.Sequence):
+                return map(recurse, val)
+            return val
+
+        repl_var = self.properties[self.INDEX_VAR]
+        resources = dict((str(k), handle_repl_val(repl_var, k, resource_def))
                          for k in range(count))
         child_template['resources'] = resources
         return child_template
