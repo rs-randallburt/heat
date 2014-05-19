@@ -57,7 +57,12 @@ class Clients(clients.OpenStackClients):
     def _get_client(self, name):
         if not self.pyrax:
             self.__authenticate()
-        return self.pyrax.get(name)
+        # try and get an end point internal to the DC for faster communication
+        try: 
+            return self.pyrax.get_client(name, cfg.CONF.region_name, public=False)
+        # otherwise use the default public one
+        except pyrax.exceptions.NoEndpointForService:
+            return self.pyrax.get_client(name, cfg.CONF.region_name)
 
     def auto_scale(self):
         """Rackspace Auto Scale client."""
@@ -108,17 +113,23 @@ class Clients(clients.OpenStackClients):
             self._cinder.client.management_url = management_url
         return self._cinder
 
+    def swift(self):
+        # Rackspace doesn't include object-store in the default catalog
+        # for "reasons". The pyrax client takes care of this, but it
+        # returns a wrapper over the upstream python-swiftclient so we
+        # unwrap here and things just work
+        return self._get_client("object-store").connection
+
     def __authenticate(self):
-        pyrax.set_setting("identity_type", "keystone")
-        pyrax.set_setting("auth_endpoint", self.context.auth_url)
+        """Create an authenticated client context""" 
+        pyrax_ctx = pyrax.create_context("rackspace")
+        pyrax_ctx.auth_endpoint = self.context.auth_url
         logger.info(_("Authenticating username:%s") %
                     self.context.username)
-        self.pyrax = pyrax.auth_with_token(self.context.auth_token,
-                                           tenant_id=self.context.tenant_id,
-                                           tenant_name=self.context.tenant,
-                                           region=(cfg.CONF.region_name
-                                                   or None))
-        if not self.pyrax:
-            raise exception.AuthorizationFailure("No services available.")
+        tenant = self.context.tenant_id
+        tenant_name = self.context.tenant
+        self.pyrax = pyrax_ctx.auth_with_token(self.context.auth_token,
+                                               tenant_id=tenant,
+                                               tenant_name=tenant_name)
         logger.info(_("User %s authenticated successfully.")
                     % self.context.username)
